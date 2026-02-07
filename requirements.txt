@@ -6,4 +6,3 @@ requests==2.31.0
 schedule==1.2.0
 gunicorn==21.2.0
 flask-session2
-django-scheduler
