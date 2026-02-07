@@ -1,0 +1,15 @@
+services:
+  stockManager:
+    image: 'stock-manager:latest'
+    ports:
+      - '8881:5000'
+    container_name: stockManager
+    volumes:
+      - ./data/funds.db:/fund/app/fundService/funds.db  
+    
+    networks:  
+      service-net:
+        ipv4_address: 172.20.0.31
+networks:
+  service-net:
+    external: true
