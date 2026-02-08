@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>基金管理系统 - 对接真实接口</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='90' font-size='80'>croin</text></svg>" type="image/svg+xml">
+
     <!-- Tailwind CSS v3 -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Font Awesome -->
@@ -12,6 +14,13 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
     <!-- Tailwind 配置 -->
     <script>
+        // 设备判断：添加到全局变量上方
+        function isMobileDevice() {
+            // 综合判断：屏幕宽度 < 768px 或 UA 包含手机特征
+            const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            const isSmallScreen = window.innerWidth < 768;
+            return isMobileUA || isSmallScreen;
+        }
         tailwind.config = {
             theme: {
                 extend: {
@@ -34,6 +43,23 @@
             .text-gradient { background-clip: text; -webkit-background-clip: text; color: transparent; background-image: linear-gradient(to right, #1a56db, #3b82f6); }
             .bg-gradient-blue { background-image: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); }
             .chart-container { position: relative; height: 220px; width: 100%; }
+            /* 移动端优化样式 */
+            .mobile-btn { @apply py-1.5 px-2 text-sm; }
+            .mobile-table { @apply text-xs; }
+
+            /* 新增：手机端按钮简化样式 */
+            .is-mobile .mobile-simplify-btn {
+                @apply px-2 py-1.5 !important; /* 更小的按钮尺寸 */
+            }
+            .is-mobile .mobile-simplify-btn span {
+                display: none !important; /* 隐藏按钮文字 */
+            }
+            .is-mobile .mobile-simplify-btn i {
+                margin-right: 0 !important; /* 移除图标右边距 */
+            }
+               .is-mobile .search-input-container {
+        display: none !important; /* 手机端直接隐藏整个搜索框容器 */
+    }
         }
     </style>
 </head>
@@ -98,18 +124,22 @@
                         <span id="currentUsername">admin</span>
                     </div>
                     <div class="relative">
-                        <input type="text" id="searchInput" placeholder="搜索基金代码/名称..." class="px-4 py-2 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary w-full md:w-64">
-                        <i class="fa fa-search absolute right-3 top-3 text-gray-400"></i>
+                            <div class="relative search-input-container"> <!-- 新增 search-input-container 类 -->
+                                <input type="text" id="searchInput" placeholder="搜索基金代码/名称..." class="px-4 py-2 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary w-full md:w-64">
+                                <i class="fa fa-search absolute right-3 top-3 text-gray-400"></i>
+                            </div>
                     </div>
-                    <!-- 优化：手动记录改为刷新数据按钮 -->
-                    <button id="refreshDataBtn" class="bg-white text-primary px-4 py-2 rounded-lg hover:bg-gray-100 transition-all flex items-center">
-                        <i class="fa fa-refresh mr-2"></i> 刷新数据
+                    <!-- 优化：手动记录改为刷新数据按钮 - 添加 mobile-simplify-btn 类 -->
+                    <button id="refreshDataBtn" class="bg-white text-primary px-4 py-2 rounded-lg hover:bg-gray-100 transition-all flex items-center mobile-simplify-btn">
+                        <i class="fa fa-refresh mr-2"></i> <span>刷新数据</span>
                     </button>
-                    <button id="toggleAddFundBtn" class="bg-white text-primary px-4 py-2 rounded-lg hover:bg-gray-100 transition-all flex items-center">
-                        <i class="fa fa-plus mr-2"></i> 新增基金
+                    <!-- 新增基金按钮 - 添加 mobile-simplify-btn 类 -->
+                    <button id="toggleAddFundBtn" class="bg-white text-primary px-4 py-2 rounded-lg hover:bg-gray-100 transition-all flex items-center mobile-simplify-btn">
+                        <i class="fa fa-plus mr-2"></i> <span>新增基金</span>
                     </button>
-                    <button id="logoutBtn" class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-all flex items-center">
-                        <i class="fa fa-sign-out mr-2"></i> 退出登录
+                    <!-- 退出登录按钮 - 添加 mobile-simplify-btn 类 -->
+                    <button id="logoutBtn" class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-all flex items-center mobile-simplify-btn">
+                        <i class="fa fa-sign-out mr-2"></i> <span>退出登录</span>
                     </button>
                 </div>
             </div>
@@ -122,8 +152,6 @@
                 <div class="bg-white rounded-xl shadow-card p-6 transition-all hover:shadow-lg">
                     <p class="text-gray-500 text-sm font-medium">总基金数/总投入本金</p>
                     <h3 id="totalFunds" class="text-3xl font-bold mt-2 text-gray-800">0/¥0.00</h3>
-<!--                    <h3 id="totalInvestPrincipal" class="text-3xl font-bold mt-2 text-gray-800">¥0.00</h3>-->
-<!--                    <span id="totalInvestPrincipal" class="text-primary">¥0.00</span></p>-->
                 </div>
                 <div class="bg-white rounded-xl shadow-card p-6 transition-all hover:shadow-lg">
                     <p class="text-gray-500 text-sm font-medium">总现存本金</p>
@@ -154,14 +182,14 @@
                             <canvas id="principalPieChart"></canvas>
                         </div>
                     </div>
-                    <div class="bg-white rounded-xl shadow-card p-6">
-                        <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                            <i class="fa fa-pie-chart text-primary mr-2"></i> 今日收益分布
-                        </h3>
-                        <div class="chart-container">
-                            <canvas id="todayEarnPieChart"></canvas>
-                        </div>
-                    </div>
+<!--                    <div class="bg-white rounded-xl shadow-card p-6">-->
+<!--                        <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">-->
+<!--                            <i class="fa fa-pie-chart text-primary mr-2"></i> 今日收益分布-->
+<!--                        </h3>-->
+<!--                        <div class="chart-container">-->
+<!--                            <canvas id="todayEarnPieChart"></canvas>-->
+<!--                        </div>-->
+<!--                    </div>-->
                 </div>
 
                 <!-- 右侧基金列表：lg占9列 -->
@@ -380,6 +408,11 @@
 
         // 页面加载后初始化
         document.addEventListener('DOMContentLoaded', function() {
+            if (isMobileDevice()) {
+                document.body.classList.add('is-mobile');
+            } else {
+                document.body.classList.add('is-desktop');
+            }
             checkLoginStatus(); // 检查是否已登录
             setupLoginEvent();  // 绑定登录事件
             setupDashboardEvent(); // 绑定看板事件
@@ -474,7 +507,7 @@
 
             // 核心优化：刷新数据按钮（替换原手动记录）
             document.getElementById('refreshDataBtn').addEventListener('click', async function() {
-                this.innerHTML = '<i class="fa fa-spinner fa-spin mr-2"></i> 刷新中...';
+                this.innerHTML = '<i class="fa fa-spinner fa-spin mr-2"></i> <span>刷新中...</span>';
                 this.disabled = true;
                 try {
                     await fetch(`${API_BASE_URL}/api/fund/refresh`);
@@ -483,7 +516,7 @@
                 } catch (error) {
                     showToast('刷新失败，请重试', 'error');
                 } finally {
-                    this.innerHTML = '<i class="fa fa-refresh mr-2"></i> 刷新数据';
+                    this.innerHTML = '<i class="fa fa-refresh mr-2"></i> <span>刷新数据</span>';
                     this.disabled = false;
                 }
             });
@@ -583,7 +616,6 @@
         // 更新概览统计卡片
         function updateStatCard(stat) {
             document.getElementById('totalFunds').textContent = fundData.length +"/"+`¥${stat.total_invest.toFixed(2)}`;
-            // document.getElementById('totalInvestPrincipal').textContent = `¥${stat.total_invest.toFixed(2)}`;
             document.getElementById('totalCurrentPrincipal').textContent = `¥${stat.total_current.toFixed(2)}`;
             document.getElementById('totalTodayEarn').textContent = `¥${stat.total_today_earn.toFixed(2)}`;
             document.getElementById('totalAllEarn').textContent = `¥${stat.total_total_earn.toFixed(2)}`;
@@ -596,93 +628,92 @@
         // 渲染双饼图（本金比例+今日收益）
         function renderPieCharts(pieData) {
             const { principal_pie, today_earn_pie } = pieData;
-    // 销毁旧图表，防止重复渲染
-    if (principalPieChart) principalPieChart.destroy();
-    if (todayEarnPieChart) todayEarnPieChart.destroy();
+            // 销毁旧图表，防止重复渲染
+            if (principalPieChart) principalPieChart.destroy();
+            if (todayEarnPieChart) todayEarnPieChart.destroy();
 
-    // 1. 本金比例饼图
-    const principalLabels = principal_pie.map(item => item.name);
-    const principalValues = principal_pie.map(item => item.value);
-    principalPieChart = new Chart(document.getElementById('principalPieChart'), {
-        type: 'doughnut',
-        data: {
-            labels: principalLabels,
-            datasets: [{
-                label: '投入本金(¥)',
-                data: principalValues,
-                backgroundColor: getChartColors(principalLabels.length),
-                borderColor: getChartBorderColors(principalLabels.length),
-                borderWidth: 1,
-                hoverOffset: 4
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: {
-                        boxWidth: 12,
-                        font: { size: 10 }
-                    }
+            // 1. 本金比例饼图
+            const principalLabels = principal_pie.map(item => item.name);
+            const principalValues = principal_pie.map(item => item.value);
+            principalPieChart = new Chart(document.getElementById('principalPieChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: principalLabels,
+                    datasets: [{
+                        label: '投入本金(¥)',
+                        data: principalValues,
+                        backgroundColor: getChartColors(principalLabels.length),
+                        borderColor: getChartBorderColors(principalLabels.length),
+                        borderWidth: 1,
+                        hoverOffset: 4
+                    }]
                 },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            const value = context.raw;
-                            const pct = principal_pie[context.dataIndex].pct;
-                            return `${context.label}: ¥${value.toFixed(2)} (${pct.toFixed(1)}%)`;
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                boxWidth: 12,
+                                font: { size: 10 }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const value = context.raw;
+                                    const pct = principal_pie[context.dataIndex].pct;
+                                    return `${context.label}: ¥${value.toFixed(2)} (${pct.toFixed(1)}%)`;
+                                }
+                            }
                         }
-                    }
+                    },
+                    cutout: '60%'
                 }
-            },
-            cutout: '60%'
-        }
-    });
+            });
 
-    // 2. 今日收益分布饼图
-    const earnLabels = today_earn_pie.map(item => item.name);
-    const earnValues = today_earn_pie.map(item => item.value);
-    todayEarnPieChart = new Chart(document.getElementById('todayEarnPieChart'), {
-        type: 'doughnut',
-        data: {
-            labels: earnLabels,
-            datasets: [{
-                label: '今日收益(¥)',
-                data: earnValues,
-                backgroundColor: getChartColors(earnLabels.length),
-                borderColor: getChartBorderColors(earnLabels.length),
-                borderWidth: 1,
-                hoverOffset: 4
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: {
-                        boxWidth: 12,
-                        font: { size: 10 }
-                    }
+            // 2. 今日收益分布饼图
+            const earnLabels = today_earn_pie.map(item => item.name);
+            const earnValues = today_earn_pie.map(item => item.value);
+            todayEarnPieChart = new Chart(document.getElementById('todayEarnPieChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: earnLabels,
+                    datasets: [{
+                        label: '今日收益(¥)',
+                        data: earnValues,
+                        backgroundColor: getChartColors(earnLabels.length),
+                        borderColor: getChartBorderColors(earnLabels.length),
+                        borderWidth: 1,
+                        hoverOffset: 4
+                    }]
                 },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            const value = context.raw;
-                            const pct = today_earn_pie[context.dataIndex].pct;
-                            return `${context.label}: ¥${value.toFixed(2)} (${pct.toFixed(1)}%)`;
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                boxWidth: 12,
+                                font: { size: 10 }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const value = context.raw;
+                                    const pct = today_earn_pie[context.dataIndex].pct;
+                                    return `${context.label}: ¥${value.toFixed(2)} (${pct.toFixed(1)}%)`;
+                                }
+                            }
                         }
-                    }
+                    },
+                    cutout: '60%'
                 }
-            },
-            cutout: '60%'
+            });
         }
-    });
-
-}
 
         // ---------------------- 基金操作接口（新增/删除/修改/趋势图） ----------------------
         async function searchFund() {
