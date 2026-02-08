@@ -242,6 +242,25 @@ def init_db():
         db.commit()
         print("✅ 数据库初始化完成，严格创建4张指定表，插入测试用户")
 
+def is_gztime_today(gztime_str):
+    """
+    校验估值更新时间是否为今日
+    :param gztime_str: 估值更新时间（如 "2026-02-08 15:00:00" 或 "15:00:00"）
+    :return: True=今日，False=非今日
+    """
+    try:
+        today = date.today()
+        # 处理两种格式：带日期/仅时间
+        if '-' in gztime_str:
+            # 格式：2026-02-08 15:00:00
+            gz_date = datetime.strptime(gztime_str.split(' ')[0], "%Y-%m-%d").date()
+        else:
+            # 格式：15:00:00（默认今日）
+            return True
+        return gz_date == today
+    except Exception as e:
+        print(f"❌ 解析gztime失败：{gztime_str} - {str(e)}")
+        return False
 
 # ---------------------- 登录校验装饰器 ----------------------
 def login_required(f):
@@ -280,13 +299,20 @@ def fetch_fund_real(fund_code):
         fund_data['dwjz'] = float(fund_data['dwjz']) if fund_data['dwjz'] else 0.0
         fund_data['gsz'] = float(fund_data['gsz']) if fund_data['gsz'] else 0.0
         fund_data['gszzl'] = float(fund_data['gszzl']) if fund_data['gszzl'] else 0.0
+        gztime = fund_data.get('gztime', '')
+        if not is_gztime_today(gztime):
+            print(f"⚠️ 基金{fund_code}：gztime({gztime})非今日，涨幅强制设为0")
+            fund_data['gszzl'] = 0.0
+        else:
+            fund_data['gszzl'] = float(fund_data['gszzl']) if fund_data['gszzl'] else 0.0
+
         return fund_data
     except Exception as e:
         print(f"❌ 基金{fund_code}：拉取失败 - {str(e)}")
         return None
 
 
-# ---------------------- 定时任务（每日15:30落库行情+收益数据） ----------------------
+# ---------------------- 定时任务（每日22:30落库行情+收益数据） ----------------------
 def calculate_day_earn(user_id, fund_code, record_date, gszzl):
     """
     计算单基金单用户当日收益+累计收益
@@ -351,6 +377,7 @@ def auto_record_data():
                     fail += 1
                     continue
                 gszzl = fund_data['gszzl']
+
                 # 行情落库（fund_daily_trend），避免重复
                 cur.execute('SELECT * FROM fund_daily_trend WHERE fund_code=? AND record_date=?', (fund_code, today))
                 if not cur.fetchone():
@@ -383,7 +410,7 @@ def auto_record_data():
 
 def start_schedule():
     """启动定时任务守护线程，不阻塞Flask主进程"""
-    schedule.every().day.at("15:30").do(auto_record_data)
+    schedule.every().day.at("10:30").do(auto_record_data)
 
     # 开发测试：每分钟执行，上线注释
     # schedule.every(1).minutes.do(auto_record_data)
@@ -394,7 +421,7 @@ def start_schedule():
 
     t = threading.Thread(target=run_schedule, daemon=True)
     t.start()
-    print("🚀 定时任务启动：每日15:30自动落库基金行情+收益数据")
+    print("🚀 定时任务启动：每日10:30自动落库昨日基金行情+收益数据")
 
 
 # ---------------------- 核心计算工具（收益/本金/涨幅，严格按需求） ----------------------
